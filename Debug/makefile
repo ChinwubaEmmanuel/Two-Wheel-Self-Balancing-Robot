@@ -10,9 +10,12 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
+"./Project_Chinwuba_Emmanuel.obj" \
 "./clock.obj" \
-"./eeprom.obj" \
-"./lab8_Chinwuba_Emmanuel.obj" \
+"./gpio.obj" \
+"./i2c0.obj" \
+"./i2c1.obj" \
+"./nvic.obj" \
 "./tm4c123gh6pm_startup_ccs.obj" \
 "./uart0.obj" \
 "./wait.obj" \
@@ -125,29 +128,29 @@ endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXE_OUTPUTS += \
-CSE\ 3442\ Lab\ 8.out \
+CSE\ 5342\ Project.out \
 
 EXE_OUTPUTS__QUOTED += \
-"CSE 3442 Lab 8.out" \
+"CSE 5342 Project.out" \
 
 
 # All Target
 all: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
-	@$(MAKE) --no-print-directory -Onone "CSE 3442 Lab 8.out"
+	@$(MAKE) --no-print-directory -Onone "CSE 5342 Project.out"
 
 # Tool invocations
-CSE\ 3442\ Lab\ 8.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
+CSE\ 5342\ Project.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: "$@"'
 	@echo 'Invoking: Arm Linker'
-	"C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"CSE 3442 Lab 8.map" --heap_size=0 --stack_size=4096 -i"C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib" -i"C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="CSE 3442 Lab 8_linkInfo.xml" --rom_model -o "CSE 3442 Lab 8.out" $(ORDERED_OBJS)
+	"C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --define=ccs="ccs" --define=PART_TM4C123GH6PM -g --gcc --diag_warning=225 --diag_wrap=off --display_error_number --abi=eabi -z -m"CSE 5342 Project.map" --heap_size=0 --stack_size=4096 -i"C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/lib" -i"C:/ti/ccs1220/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include" --reread_libs --diag_wrap=off --display_error_number --warn_sections --xml_link_info="CSE 5342 Project_linkInfo.xml" --rom_model -o "CSE 5342 Project.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: "$@"'
 	@echo ' '
 
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "clock.obj" "eeprom.obj" "lab8_Chinwuba_Emmanuel.obj" "tm4c123gh6pm_startup_ccs.obj" "uart0.obj" "wait.obj" 
-	-$(RM) "clock.d" "eeprom.d" "lab8_Chinwuba_Emmanuel.d" "tm4c123gh6pm_startup_ccs.d" "uart0.d" "wait.d" 
+	-$(RM) "Project_Chinwuba_Emmanuel.obj" "clock.obj" "gpio.obj" "i2c0.obj" "i2c1.obj" "nvic.obj" "tm4c123gh6pm_startup_ccs.obj" "uart0.obj" "wait.obj" 
+	-$(RM) "Project_Chinwuba_Emmanuel.d" "clock.d" "gpio.d" "i2c0.d" "i2c1.d" "nvic.d" "tm4c123gh6pm_startup_ccs.d" "uart0.d" "wait.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 
