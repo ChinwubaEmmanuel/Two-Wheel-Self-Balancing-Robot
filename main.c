@@ -49,9 +49,12 @@ float opbRTAVG = 0;
 float edgeTimings[MAX_EDGES];
 float opbLtime[16];
 float opbRtime[16];
-//float k = 0.000099; //0.0001;
-float k = 0.00001;
-float ki = 0.0001;
+float k = 0.000099; //0.0001;
+//float k = 0.00001;
+float kp = 0.01;
+float ki = 0.00009;
+float kd = 0.009;
+float prev_mpu_error = 0;
 uint32_t denom_L = 0;
 uint32_t denom_R = 0;
 uint32_t bitStream[32];
@@ -305,7 +308,7 @@ void initHw()
 void initMPU()
 {
     writeI2c1Register(ADDR, 0x6B, 0x00);
-    //writeI2c1Register(ADDR, 0x6B, 0x03);
+    writeI2c1Register(ADDR, 0x6B, 0x03); //
     waitMicrosecond(1000);
     writeI2c1Register(ADDR, 0x19, 0x07);
     waitMicrosecond(1000);
@@ -359,7 +362,7 @@ void enableTimerModeIR()
     TIMER3_TAMR_R = TIMER_TAMR_TAMR_PERIOD;          // configure for periodic mode (count down)
     TIMER3_TAILR_R = 40E3;                       // set load value to 40e6 for 1 Hz interrupt rate
     //TIMER3_TAILR_R = 50000;
-    TIMER3_IMR_R = TIMER_IMR_TATOIM;;                 // turn-on interrupts
+    TIMER3_IMR_R = TIMER_IMR_TATOIM;                 // turn-on interrupts
     TIMER3_CTL_R |= TIMER_CTL_TAEN;                  // turn-on timer
     enableNvicInterrupt(INT_TIMER3A);             // turn-on interrupt 37 (TIMER1A)
     /******/
@@ -486,36 +489,36 @@ void modISR()
     {
         RPM_L += (WTIMER1_TBV_R);
 
-    //    denom_L = (sizeof(opbLtime)/sizeof(opbLtime[0]));
-    //    opbLTAVG -= opbLtime[indexL];
-    //    opbLTAVG += RPM_L/denom_L;
-    //    opbLtime[indexL] = RPM_L/denom_L;
-    //    indexL = (indexL + 1) & 15;
+        denom_L = (sizeof(opbLtime)/sizeof(opbLtime[0]));
+        opbLTAVG -= opbLtime[indexL];
+        opbLTAVG += RPM_L/denom_L;
+        opbLtime[indexL] = RPM_L/denom_L;
+        indexL = (indexL + 1) & 15;
 
         RPM_R += (WTIMER1_TAV_R);
 
-    //    denom_R = (sizeof(opbRtime)/sizeof(opbRtime[0]));
-    //    opbRTAVG -= opbRtime[indexR];
-    //    opbRTAVG += RPM_R/denom_R;
-    //    opbRTAVG = opbRTAVG;
-    //    opbRtime[indexR] = RPM_R/denom_R;
-    //    indexR = (indexR + 1) & 15;
+        denom_R = (sizeof(opbRtime)/sizeof(opbRtime[0]));
+        opbRTAVG -= opbRtime[indexR];
+        opbRTAVG += RPM_R/denom_R;
+        opbRTAVG = opbRTAVG;
+        opbRtime[indexR] = RPM_R/denom_R;
+        indexR = (indexR + 1) & 15;
 
         tick_err = RPM_L - RPM_R;
-        //tick_err = l-r;
-        //modifier = (k*abs(tick_err)) + (ki*abs(error));
-    //    if(tick_err < 50 && tick_err > -50)
-    //    {
-    //        k = 0.00001;
-    //    }
-    //    if(tick_err < 10 && tick_err > -10)
-    //    {
-    //        k = 0.0000001;
-    //    }
-    //    if(tick_err < 4 && tick_err > -4)
-    //    {
-    //        k = 0.00000001;
-    //    }
+        tick_err = l-r;
+        modifier = (k*abs(tick_err)) + (ki*abs(error));
+        if(tick_err < 50 && tick_err > -50)
+        {
+            k = 0.00001;
+        }
+        if(tick_err < 10 && tick_err > -10)
+        {
+            k = 0.0000001;
+        }
+        if(tick_err < 4 && tick_err > -4)
+        {
+            k = 0.00000001;
+        }
 
         modifier = (k*abs(tick_err));
 
@@ -757,52 +760,53 @@ void mpu_isr()
     theta = (0.02*sum_gyro_y) + (0.98 * static_angle);
     sum_gyro_y = theta;
 
-    mpu_error = 0.7 - theta;
+    mpu_error = theta - 0.7;
+    float proportional = abs(mpu_error) * kp;
     integral += mpu_error;
-    plant_l = plant_l + (integral * ki);
-    plant_r = plant_r + (integral * ki);
+    int max_integral = 100;
+    if (integral > max_integral) integral = max_integral;
+    if (theta < -max_integral) integral = -max_integral;
+    if (integral < 3 || integral > -3) integral = 0;
+    float integration = integral * ki;
+    float diff = mpu_error - prev_mpu_error;
+    prev_mpu_error = mpu_error;
+    float differential = diff * kd;
+    float pre_pid = (proportional+integration+differential) * 1023;
+    float pid = 730 + (((pre_pid/1023)) * (1023-730));
+    plant_l = pid;
+    plant_r = pid+20;
 
-    if(plant_l > 999)
+    if(plant_l > 1023)
     {
-        plant_l = 999;
+        plant_l = 1023;
     }
-    if(plant_r > 999)
+    else if(plant_l < 730)
     {
-        plant_r = 999;
+        plant_l = 730;
     }
-    if(plant_l < 720)
+    if(plant_r > 1023)
     {
-        plant_l = 720;
+        plant_r = 1023;
     }
-    if(plant_r < 810)
+    else if(plant_r < 730)
     {
-        plant_r = 810;
+        plant_r = 730;
     }
     if(count == 0 && flag == 'N' && balance == 'B')
     {
-        if(theta > 25 && theta < 70)
+        if(mpu_error > 15)
         {
-            //forward
-            left_b(780);
-            right_b(840);
+            right_f(0);
+            left_f(0);
+            left_b(plant_l);
+            right_b(plant_r);
         }
-        else if(theta < -15 && theta > -70)
+        else if(mpu_error < -15)
         {
-            //back
-            left_f(780);
-            right_f(840);
-        }
-        else if(theta < -71 && theta > -120)
-        {
-            //back
-            left_f(760);
-            right_f(870);
-        }
-        else if(theta > 71 && theta < 120)
-        {
-            //forward
-            left_b(770);
-            right_b(880);
+            right_b(0);
+            left_b(0);
+            left_f(plant_l);
+            right_f(plant_r);
         }
         else
         {
@@ -982,10 +986,8 @@ int main(void)
                     parseIR();
                     if (flag == 'F' || flag2 == 'F')
                     {
-                        left_f(830);
-                        right_f(879);
-//                        left_f(left_pwm);
-//                        right_f(right_pwm);
+                        left_f(left_pwm);
+                        right_f(right_pwm);
                         waitMicrosecond(500000);
                         left_f(0);
                         right_f(0);
@@ -1000,16 +1002,16 @@ int main(void)
                     }
                     else if (flag == 'C' || flag2 == 'C')
                     {
-                        right_f(830);
-                        left_b(872);
+                        right_f(right_pwm);
+                        left_b(left_pwm);
                         waitMicrosecond(140000);
                         right_f(0);
                         left_b(0);
                     }
                     else if (flag == 'W' || flag2 == 'W')
                     {
-                        right_b(830);
-                        left_f(872);
+                        right_b(right_pwm);
+                        left_f(left_pwm);
                         waitMicrosecond(120000);
                         right_b(0);
                         left_f(0);
